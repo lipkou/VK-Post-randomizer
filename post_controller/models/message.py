@@ -3,7 +3,8 @@ from django.db import models
 
 class Message(models.Model):
     categories = models.ManyToManyField("post_controller.Category", related_name='messages')
-    text = models.TextField()
+    text = models.CharField()
+    used = models.BooleanField(default=False)
     
     class Meta:
         verbose_name="Сообщение"

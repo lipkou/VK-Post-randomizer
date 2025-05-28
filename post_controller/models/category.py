@@ -1,9 +1,10 @@
 from django.db import models
-
+from datetime import timedelta
 
 
 class Category(models.Model):
     name = models.CharField('Название', max_length=100, unique=True)
+    time = models.TimeField(null=False)
     
     class Meta:
         verbose_name="Категория"

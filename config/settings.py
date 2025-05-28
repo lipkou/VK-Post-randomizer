@@ -103,8 +103,8 @@ AUTH_PASSWORD_VALIDATORS = [
 #############################
 #  LOCALISATION
 #############################
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+LANGUAGE_CODE = 'ru'
+TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 USE_TZ = True
 
@@ -119,3 +119,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 # MEDIA_TEST_ROOT = os.path.join(BASE_DIR, 'media/test/')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+VK_TOKEN = env.str("VK_TOKEN")
+GROUP_ID = env.int("GROUP_ID")

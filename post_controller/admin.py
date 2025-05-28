@@ -9,7 +9,7 @@ from django.utils.html import mark_safe
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', "media_count", "message_count"]
+    list_display = ['name', 'time', "media_count", "message_count"]
     
     def media_count(self, obj):
         return obj.media.count()
@@ -22,7 +22,7 @@ class CategoryAdmin(admin.ModelAdmin):
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
     form = MediaAdminForm
-    list_display = ['id', 'preview', 'categories_list']
+    list_display = ['id', 'preview', 'categories_list', "used",]
     filter_horizontal = ['categories']  
     list_display_links = ['id', 'preview', ]
     
@@ -38,7 +38,7 @@ class MediaAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['id', 'short_text', 'categories_list',]
+    list_display = ['id', 'short_text', 'categories_list', "used",]
     filter_horizontal = ['categories']
     list_display_links = ['id', 'short_text', ]
     
