@@ -1,8 +1,9 @@
 from django.db import models
 
 
-class Media(models.Model):
-    categories = models.ManyToManyField("post_controller.Category", related_name='media')
+class StatickMedia(models.Model):
+    categories = models.ManyToManyField("post_controller.StatickCategory", related_name='st_media')
+    text = models.CharField()
     image = models.ImageField()
     image2 = models.ImageField(blank=True, null=True)
     image3 = models.ImageField(blank=True, null=True)
@@ -17,9 +18,9 @@ class Media(models.Model):
     used_time = models.DateTimeField(blank=True, null=True)
     
     class Meta:
-        verbose_name="Изображение"
-        verbose_name_plural="Изображения"
+        verbose_name="Статическое изображение"
+        verbose_name_plural="Статические изображения"
 
         
     def __str__(self):
-        return f"Media ID {self.id}"
+        return f"St. Media ID {self.id}"

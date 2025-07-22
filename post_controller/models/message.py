@@ -5,6 +5,7 @@ class Message(models.Model):
     categories = models.ManyToManyField("post_controller.Category", related_name='messages')
     text = models.CharField()
     used = models.BooleanField(default=False)
+    used_time = models.DateTimeField(blank=True, null=True)
     
     class Meta:
         verbose_name="Сообщение"
