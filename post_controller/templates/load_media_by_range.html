@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Выбор дат</title>
+        <style>
+            footer {
+                margin-top: 50px;
+                padding: 10px;
+                text-align: center;
+                font-size: 0.9em;
+                color: #555;
+                background-color: #f5f5f5;
+                border-top: 1px solid #ddd;
+                border-radius: 4px;
+            }
+        </style>
+    </head>
+    <body>
+        {% if user.is_authenticated and user.is_staff %}
+            <h1>Укажите диапазон дат</h1>
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit">Запустить скрипт</button>
+            </form>
+        {% else %}
+            <h2>Доступ ограничен</h2>
+            <p>Пожалуйста, <a href="/admin/">войдите</a> или зарегистрируйтесь для доступа к этому сайту.</p>
+        {% endif %}
+    
+        <footer>
+            By Lipkou © {{ now|date:"Y" }}
+        </footer>
+    </body>
+</html>

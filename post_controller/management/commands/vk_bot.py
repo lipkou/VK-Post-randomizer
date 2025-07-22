@@ -2,72 +2,393 @@ import os
 import time
 import pytz
 from post_controller.models.category import Category
+from post_controller.models.statick_categories import StatickCategory
+from post_controller.models.weekDays import WeekDay
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.db import models 
 import vk_api
 import random  
 from datetime import datetime, timedelta  
+from django.utils import timezone
 
 
-
+def restart_categorry(categorry, static=False):
+    if static:
+        midia_list = categorry.st_media.all()
+        for st_media in midia_list:
+            st_media.used = False
+            st_media.save()
+    else:
+        media_list = categorry.media.all()
+        message_list = categorry.messages.all()
+        for media in media_list:
+            media.used = False
+            media.save()
+        
+        for message in message_list:
+            message.used = False
+            message.save()
+        
+    categorry.last_restarted = timezone.now()
+    categorry.save()
+        
+        
 class Command(BaseCommand):
-    help = 'Выводит случайное сообщение и изображение из категории с ID=1'
+    help = 'Создание отложенных постов на следующую неделю по расписанию категорий'
+    def add_arguments(self, parser):
+        parser.add_argument('--start', type=str, help='Start date in YYYY-MM-DD format')
+        parser.add_argument('--end', type=str, help='End date in YYYY-MM-DD format')
 
     def handle(self, *args, **kwargs):
-        categories_list = list(Category.objects.all())
+        start_str = kwargs['start']
+        end_str = kwargs['end']
+
+        moscow_tz = pytz.timezone("Europe/Moscow")
+
+        start_date = datetime.strptime(start_str, "%Y-%m-%d").astimezone(moscow_tz)
+        end_date = datetime.strptime(end_str, "%Y-%m-%d").astimezone(moscow_tz)
+        print(f"Start: {start_date}, End: {end_date}")
         
-        # work with vk 
+        vk_session = vk_api.VkApi(token=settings.VK_TOKEN)
+        vk = vk_session.get_api()
+        upload = vk_api.VkUpload(vk_session)
+    
+        # Проходимся по всем дням и загружаем медиа
+        analizing_date = start_date
+        while analizing_date <= end_date:
+            # print(f"{analizing_date}:", analizing_date.weekday())
+            
+            week_day = WeekDay.objects.get(code=str(analizing_date.weekday() + 1))
+            categories = Category.objects.filter(week_days=week_day)
+            statick_categories = StatickCategory.objects.filter(week_days=week_day)
+            
+
+            ###################
+            # Статические категории (категории с привязаным сообщением к ней)
+            ###################
+            for st_category in statick_categories:
+                # Дата и время публикации
+                publish_datetime = moscow_tz.localize(datetime.combine(analizing_date, st_category.time))
+                publish_timestamp = int(publish_datetime.timestamp())
+
+                # Медиа и сообщение
+                media_list = list(st_category.st_media.filter(used=False))
+                if not media_list:
+                    print("-" * 15)
+                    print(f"[{st_category.name}] Нет доступных СТАТИЧЕСКИХ медиа на {analizing_date}")
+                    print("Начался рестарт всей информации в категории.")
+                    if st_category.last_restarted:
+                        delta = timezone.now() - st_category.last_restarted
+                        print(f"Последний рестарт был {delta.days} дней назад ({st_category.last_restarted})")
+                    print("-" * 15)
+                    restart_categorry(st_category, static=True)
+                    continue
+                
+                media = random.choice(media_list)
+                message = media.text
+                
+
+                # Собираем все непустые изображения
+                image_paths = [
+                    getattr(media, f'image{i}').path
+                    for i in range(2, 11)
+                    if getattr(media, f'image{i}')
+                ]
+                image_paths.insert(0, media.image.path)
+
+                if not image_paths:
+                    print(f"[{st_category.name}] У медиа ID {media.id} нет изображений")
+                    continue
+
+                # Загружаем в VK
+                attachments = []
+                for path in image_paths:
+                    try:
+                        upload_response = upload.photo_wall(path, group_id=settings.GROUP_ID)
+                        photo_id = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+                        attachments.append(photo_id)
+                    except Exception as e:
+                        print(f"Ошибка загрузки фото: {e}")
+
+                if not attachments:
+                    print(f"[{st_category.name}] Не удалось загрузить изображения")
+                    continue
+
+                # Отправка отложенного поста
+                try:
+                    vk.wall.post(
+                        owner_id=-settings.GROUP_ID,
+                        from_group=1,
+                        message=message,
+                        attachments=','.join(attachments),
+                        publish_date=publish_timestamp
+                    )
+                    print(f"[{st_category.name}] Запланирован СТАТИЧЕСКИЙ пост на {publish_datetime}")
+
+                    media.used = True
+                    media.used_time = publish_datetime
+                    media.save()
+                except Exception as e:
+                    print(f"Ошибка при публикации поста: {e}")
+
+
+
+            ###################
+            # Обычные категории (не статические)
+            ###################
+            for category in categories:
+                # Дата и время публикации
+                publish_datetime = moscow_tz.localize(datetime.combine(analizing_date, category.time))
+                publish_timestamp = int(publish_datetime.timestamp())
+
+                # Рандомные медиа и сообщение
+                images_qs = list(category.media.filter(used=False))
+                messages_qs = list(category.messages.filter(used=False))
+
+                if not images_qs or not messages_qs:
+                    print("-" * 15)
+                    print(f"[{category.name}] Нет доступных медиа или сообщений на {analizing_date}")
+                    print("Начался рестарт всей информации в категории.")
+                    if category.last_restarted:
+                        delta = timezone.now() - category.last_restarted
+                        print(f"Последний рестарт был {delta.days} дней назад ({category.last_restarted})")
+                    print("-" * 15)
+                    restart_categorry(category)
+                    continue
+
+                media = random.choice(images_qs)
+                message = random.choice(messages_qs)
+
+                # Собираем все непустые изображения
+                image_paths = [
+                    getattr(media, f'image{i}').path
+                    for i in range(2, 11)
+                    if getattr(media, f'image{i}')
+                ]
+                image_paths.insert(0, media.image.path)
+
+                if not image_paths:
+                    print("-" * 15)
+                    print(f"[{category.name}] У медиа ID {media.id} нет изображений")
+                    print("Начался рестарт всей информации в категории.")
+                    if category.last_restarted:
+                        delta = timezone.now() - category.last_restarted
+                        print(f"Последний рестарт был {delta.days} дней назад ({category.last_restarted})")
+                    print("-" * 15)
+                    restart_categorry(category)
+                    continue
+
+                # Загружаем в VK
+                attachments = []
+                for path in image_paths:
+                    try:
+                        upload_response = upload.photo_wall(path, group_id=settings.GROUP_ID)
+                        photo_id = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+                        attachments.append(photo_id)
+                    except Exception as e:
+                        print(f"Ошибка загрузки фото: {e}")
+
+                if not attachments:
+                    print(f"[{category.name}] Не удалось загрузить изображения")
+                    continue
+
+                # Отправка отложенного поста
+                try:
+                    vk.wall.post(
+                        owner_id=-settings.GROUP_ID,
+                        from_group=1,
+                        message=message.text + f"\n {category.signature}",
+                        attachments=','.join(attachments),
+                        publish_date=publish_timestamp
+                    )
+                    print(f"[{category.name}] Запланирован пост на {publish_datetime}")
+
+                    media.used = True
+                    media.used_time = publish_datetime
+                    media.save()
+
+                    message.used = True
+                    message.used_time = publish_datetime
+                    message.save()
+
+                except Exception as e:
+                    print(f"Ошибка при публикации поста: {e}")
+
+
+            
+            analizing_date += timedelta(days=1)
+            
+        print("=" * 15)
+        print("Загрузка прошла успешно.")
+        print(f"C {start_date};")
+        print(f"До {end_date};")
+        print("=" * 15)
+        
+        ''' # Автоматическое пополнение медиа
+    
+        moscow_tz = pytz.timezone("Europe/Moscow")
+        # print(start_date, end_date)
+        # Получаем дату следующего понедельника
+        today = timezone.now().astimezone(moscow_tz).date()
+        days_ahead = (7 - today.weekday()) % 7  # сколько дней до следующего понедельника
+        next_monday = today + timedelta(days=days_ahead or 7)
+
+        # Составляем mapping кодов дней недели к датам следующей недели
+        weekday_code_to_date = {
+            str(i + 1): next_monday + timedelta(days=i) for i in range(7)
+        }
+
         vk_session = vk_api.VkApi(token=settings.VK_TOKEN)
         vk = vk_session.get_api()
         upload = vk_api.VkUpload(vk_session)
         
-        for category in categories_list:
-            images = list(category.media.filter(used=False).all())
-            messages = list(category.messages.filter(used=False).all())
-            # print(images)
-            # print(messages)
+        ###################
+        # Статические категории (категории с привязаным сообщением к ней)
+        ###################
+        st_categories_list = list(StatickCategory.objects.all())
+        for st_category in st_categories_list:
+            category_days = [wd.code for wd in st_category.week_days.all()]
             
-            if not images:
-                print("Не найдено картинок")
-                continue
-            elif not messages:
-                print("Не найдено сообщений")
-                continue
-            
-            chosed:list[models.Model] = []
-            chosed.append(random.choice(images))
-            chosed.append(random.choice(messages))
-            
-            # load photo or gif in vk
-            upload_response = upload.photo_wall(chosed[0].image.path, group_id=settings.GROUP_ID)
-            attachment = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+            for code in category_days:
+                post_date = weekday_code_to_date.get(code)
+                if not post_date:
+                    continue  # Дата не найдена (в теории не должно быть)
 
-            # get and transform time
-            moscow_tz = pytz.timezone("Europe/Moscow")
-            category_time = category.time
-            
-            tomorrow = datetime.now(moscow_tz).date() + timedelta(days=1)
-            combined_datetime = datetime.combine(tomorrow, category_time)
-            localized = moscow_tz.localize(combined_datetime)
-            publish_timestamp = int(localized.timestamp())
-            
-            # sending post
-            vk.wall.post(
-                owner_id=-settings.GROUP_ID,  # with "-" ID group
-                from_group=1,
-                message=chosed[1].text,
-                attachments=attachment,
-                publish_date=publish_timestamp
-            )
-            
+                # Дата и время публикации
+                publish_datetime = moscow_tz.localize(datetime.combine(post_date, st_category.time))
+                publish_timestamp = int(publish_datetime.timestamp())
 
-            print("Опубликирован пост:", chosed)
-            
-            for model in chosed: 
-                model.used = True 
-                model.save()
-            
-            # print(list(category.messages.filter(used=False).all()))
-            time.sleep(10)
+                # Медиа и сообщение
+                media_list = list(st_category.st_media.filter(used=False))
+                if not media_list:
+                    print(f"[{st_category.name}] Нет доступных медиа на {post_date}")
+                    # restart_categorry(st_category, static=True)
+                    continue
                 
+                media = random.choice(media_list)
+                message = media.text
+                
+
+                # Собираем все непустые изображения
+                image_paths = [
+                    getattr(media, f'image{i}').path
+                    for i in range(2, 11)
+                    if getattr(media, f'image{i}')
+                ]
+                image_paths.insert(0, media.image.path)
+
+                if not image_paths:
+                    print(f"[{st_category.name}] У медиа ID {media.id} нет изображений")
+                    continue
+
+                # Загружаем в VK
+                attachments = []
+                for path in image_paths:
+                    try:
+                        upload_response = upload.photo_wall(path, group_id=settings.GROUP_ID)
+                        photo_id = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+                        attachments.append(photo_id)
+                    except Exception as e:
+                        print(f"Ошибка загрузки фото: {e}")
+
+                if not attachments:
+                    print(f"[{st_category.name}] Не удалось загрузить изображения")
+                    continue
+
+                # Отправка отложенного поста
+                try:
+                    vk.wall.post(
+                        owner_id=-settings.GROUP_ID,
+                        from_group=1,
+                        message=message,
+                        attachments=','.join(attachments),
+                        publish_date=publish_timestamp
+                    )
+                    print(f"[{st_category.name}] Запланирован пост на {publish_datetime}")
+
+                    media.used = True
+                    media.used_time = publish_datetime
+                    media.save()
+
+                except Exception as e:
+                    print(f"Ошибка при публикации поста: {e}")
+
+        ###################
+        # обычные категории (не статические)
+        ###################
+        categories_list = list(Category.objects.all())
+        for category in categories_list:
+            category_days = [wd.code for wd in category.week_days.all()]
+            
+            for code in category_days:
+                post_date = weekday_code_to_date.get(code)
+                if not post_date:
+                    continue  # Дата не найдена (в теории не должно быть)
+
+                # Дата и время публикации
+                publish_datetime = moscow_tz.localize(datetime.combine(post_date, category.time))
+                publish_timestamp = int(publish_datetime.timestamp())
+
+                # Рандомные медиа и сообщение
+                images_qs = list(category.media.filter(used=False))
+                messages_qs = list(category.messages.filter(used=False))
+
+                if not images_qs or not messages_qs:
+                    print(f"[{category.name}] Нет доступных медиа или сообщений на {post_date}")
+                    restart_categorry(category)
+                    continue
+
+                media = random.choice(images_qs)
+                message = random.choice(messages_qs)
+
+                # Собираем все непустые изображения
+                image_paths = [
+                    getattr(media, f'image{i}').path
+                    for i in range(2, 11)
+                    if getattr(media, f'image{i}')
+                ]
+                image_paths.insert(0, media.image.path)
+
+                if not image_paths:
+                    print(f"[{category.name}] У медиа ID {media.id} нет изображений")
+                    restart_categorry(category)
+                    continue
+
+                # Загружаем в VK
+                attachments = []
+                for path in image_paths:
+                    try:
+                        upload_response = upload.photo_wall(path, group_id=settings.GROUP_ID)
+                        photo_id = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+                        attachments.append(photo_id)
+                    except Exception as e:
+                        print(f"Ошибка загрузки фото: {e}")
+
+                if not attachments:
+                    print(f"[{category.name}] Не удалось загрузить изображения")
+                    continue
+
+                # Отправка отложенного поста
+                try:
+                    vk.wall.post(
+                        owner_id=-settings.GROUP_ID,
+                        from_group=1,
+                        message=message.text + f"\n {category.signature}",
+                        attachments=','.join(attachments),
+                        publish_date=publish_timestamp
+                    )
+                    print(f"[{category.name}] Запланирован пост на {publish_datetime}")
+
+                    media.used = True
+                    media.used_time = publish_datetime
+                    media.save()
+
+                    message.used = True
+                    message.used_time = publish_datetime
+                    message.save()
+
+                except Exception as e:
+                    print(f"Ошибка при публикации поста: {e}")
+
+        '''
