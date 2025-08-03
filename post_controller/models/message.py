@@ -3,7 +3,7 @@ from django.db import models
 
 class Message(models.Model):
     categories = models.ManyToManyField("post_controller.Category", related_name='messages')
-    text = models.CharField()
+    text = models.TextField()
     used = models.BooleanField(default=False)
     used_time = models.DateTimeField(blank=True, null=True)
     

@@ -48,7 +48,7 @@ class MediaAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ['id', 'short_text', 'categories_list', "used",]
+    list_display = ['id', 'short_text', 'categories_list', "used_time", "used",]
     filter_horizontal = ['categories']
     list_display_links = ['id', 'short_text', ]
     
@@ -63,7 +63,7 @@ class MessageAdmin(admin.ModelAdmin):
 
 @admin.register(StatickCategory)
 class StCategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "media_count", "time", "day_list", "last_restarted", ]
+    list_display = ["name", "signature", "media_count", "time", "day_list", "last_restarted", ]
     def media_count(self, obj):
         return obj.st_media.count()
     media_count.short_description = "Ст. Медия"

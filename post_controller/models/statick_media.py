@@ -3,7 +3,7 @@ from django.db import models
 
 class StatickMedia(models.Model):
     categories = models.ManyToManyField("post_controller.StatickCategory", related_name='st_media')
-    text = models.CharField()
+    text = models.TextField()
     image = models.ImageField()
     image2 = models.ImageField(blank=True, null=True)
     image3 = models.ImageField(blank=True, null=True)
