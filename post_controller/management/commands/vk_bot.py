@@ -86,6 +86,10 @@ class Command(BaseCommand):
                     print("-" * 15)
                     restart_categorry(st_category, static=True)
                     
+                    ###############
+                    # Заменить получение актульных данных на более красивый вариант
+                    ###############    
+                    media_list = list(st_category.st_media.filter(used=False))
                 
                 media = random.choice(media_list)
                 message = media.text
@@ -157,7 +161,14 @@ class Command(BaseCommand):
                         print(f"Последний рестарт был {delta.days} дней назад ({category.last_restarted})")
                     print("-" * 15)
                     restart_categorry(category)
-                    continue
+                    
+                    ###############
+                    # Заменить получение актульных данных на более красивый вариант
+                    ###############
+                    images_qs = list(category.media.filter(used=False))
+                    messages_qs = list(category.messages.filter(used=False))
+
+                    
 
                 media = random.choice(images_qs)
                 message = random.choice(messages_qs)
@@ -180,6 +191,15 @@ class Command(BaseCommand):
                     print("-" * 15)
                     restart_categorry(category)
                     
+                    ###############
+                    # Заменить получение актульных данных на более красивый вариант
+                    ###############
+                    media = random.choice(images_qs)
+                    message = random.choice(messages_qs)
+                    
+                    # Собираем все непустые изображения
+                    image_paths = [getattr(media, f'image{i}').path for i in range(2, 11) if getattr(media, f'image{i}')]
+                    image_paths.insert(0, media.image.path)                    
 
                 # Загружаем в VK
                 attachments = []
