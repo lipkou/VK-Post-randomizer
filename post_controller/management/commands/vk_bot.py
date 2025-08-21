@@ -1,6 +1,7 @@
 import os
 import time
 import pytz
+import requests
 from post_controller.models.category import Category
 from post_controller.models.statick_categories import StatickCategory
 from post_controller.models.weekDays import WeekDay
@@ -53,7 +54,8 @@ class Command(BaseCommand):
         vk_session = vk_api.VkApi(token=settings.VK_TOKEN)
         vk = vk_session.get_api()
         upload = vk_api.VkUpload(vk_session)
-    
+        me = vk.users.get()
+        group_info = vk.groups.getById(group_id=settings.GROUP_ID)
         # Проходимся по всем дням и загружаем медиа
         analizing_date = start_date
         while analizing_date <= end_date:
@@ -83,7 +85,7 @@ class Command(BaseCommand):
                         print(f"Последний рестарт был {delta.days} дней назад ({st_category.last_restarted})")
                     print("-" * 15)
                     restart_categorry(st_category, static=True)
-                    continue
+                    
                 
                 media = random.choice(media_list)
                 message = media.text
@@ -177,15 +179,27 @@ class Command(BaseCommand):
                         print(f"Последний рестарт был {delta.days} дней назад ({category.last_restarted})")
                     print("-" * 15)
                     restart_categorry(category)
-                    continue
+                    
 
                 # Загружаем в VK
                 attachments = []
                 for path in image_paths:
                     try:
-                        upload_response = upload.photo_wall(path, group_id=settings.GROUP_ID)
-                        photo_id = f'photo{upload_response[0]["owner_id"]}_{upload_response[0]["id"]}'
+                        #################
+                        # TODO: Скопировать этот код и вставить в обычную категорию на обработку изображений. 
+                        
+                        upload_server = vk.photos.getWallUploadServer(group_id=settings.GROUP_ID)
+
+                        
+                        # Открываем текущее изображение
+                        with open(path, 'rb') as image_file:
+                            response = requests.post(upload_server['upload_url'], files={'photo': image_file}).json()
+                        
+                        save_response = vk.photos.saveWallPhoto(group_id=settings.GROUP_ID, photo=response['photo'], server=response['server'], hash=response['hash'])
+                        photo_id = f"photo{save_response[0]['owner_id']}_{save_response[0]['id']}"
                         attachments.append(photo_id)
+                        
+                        #################
                     except Exception as e:
                         print(f"Ошибка загрузки фото: {e}")
 
@@ -392,3 +406,4 @@ class Command(BaseCommand):
                     print(f"Ошибка при публикации поста: {e}")
 
         '''
+        
