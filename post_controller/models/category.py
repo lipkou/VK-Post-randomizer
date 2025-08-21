@@ -17,5 +17,5 @@ class Category(models.Model):
     def __str__(self):
         media_count = self.media.count()
         message_count = self.messages.count()
-        return f'{self.name} (Изображений: {media_count}; Сообщений: {message_count})'
+        return f'{self.name} (Img: {media_count}; Mes: {message_count})'
 

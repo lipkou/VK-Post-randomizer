@@ -36,6 +36,9 @@ def load_media_by_range(request:HttpRequest):
             ])
             
             html_text = f'''
+<a href="/">Главная</a>
+<a href="/admin/">Админка</a>
+
 <h2>Скрипт запущен в фоне. Можете продолжать работу.</h2> 
 <p>Скрипт заполнит медиа с <b>{start_date}</b> до <b>{end_date}</b>.</p>
 '''

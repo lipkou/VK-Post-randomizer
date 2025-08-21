@@ -30,8 +30,10 @@ class CategoryAdmin(admin.ModelAdmin):
 class MediaAdmin(admin.ModelAdmin):
     form = MediaAdminForm
     list_display = ['id', 'preview', 'categories_list', "used_time", "used"]
-    filter_horizontal = ['categories']
     list_display_links = ['id', 'preview']
+    filter_horizontal = ['categories']
+    
+    list_filter = ['categories']  
 
     def categories_list(self, obj):
         return ", ".join(c.name for c in obj.categories.all())
@@ -49,9 +51,11 @@ class MediaAdmin(admin.ModelAdmin):
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = ['id', 'short_text', 'categories_list', "used_time", "used",]
-    filter_horizontal = ['categories']
     list_display_links = ['id', 'short_text', ]
+    filter_horizontal = ['categories']
     
+    list_filter = ['categories']
+     
     def short_text(self, obj):
         return obj.text[:50]
     short_text.short_description = 'Text'
@@ -77,8 +81,10 @@ class StCategoryAdmin(admin.ModelAdmin):
 class StMediaAdmin(admin.ModelAdmin):
     form = MediaAdminForm
     list_display = ['id', 'preview', 'categories_list', "used_time", "used",]
-    filter_horizontal = ['categories']  
     list_display_links = ['id', 'preview', ]
+    filter_horizontal = ['categories']  
+    
+    list_filter = ['categories'] 
     
     def categories_list(self, obj):
         return ", ".join(c.name for c in obj.categories.all())

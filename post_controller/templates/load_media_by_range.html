@@ -16,6 +16,9 @@
         </style>
     </head>
     <body>
+        <a href="/">Главная</a>
+        <a href="/admin/">Админка</a>
+
         {% if user.is_authenticated and user.is_staff %}
             <h1>Укажите диапазон дат</h1>
             <form method="post">
