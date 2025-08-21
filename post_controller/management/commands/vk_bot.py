@@ -70,6 +70,11 @@ class Command(BaseCommand):
             # Статические категории (категории с привязаным сообщением к ней)
             ###################
             for st_category in statick_categories:
+                # Проверка надо ли отправлять медия для этой категории
+                if not st_category.active:
+                    print(f"Категория [{st_category.name}] НЕ активна")
+                    continue
+                
                 # Дата и время публикации
                 publish_datetime = moscow_tz.localize(datetime.combine(analizing_date, st_category.time))
                 publish_timestamp = int(publish_datetime.timestamp())
@@ -144,6 +149,11 @@ class Command(BaseCommand):
             # Обычные категории (не статические)
             ###################
             for category in categories:
+                # Проверка надо ли отправлять медия для этой категории
+                if not category.active:
+                    print(f"Категория [{category.name}] НЕ активна")
+                    continue
+                
                 # Дата и время публикации
                 publish_datetime = moscow_tz.localize(datetime.combine(analizing_date, category.time))
                 publish_timestamp = int(publish_datetime.timestamp())

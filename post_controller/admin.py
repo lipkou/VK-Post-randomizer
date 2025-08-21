@@ -12,7 +12,7 @@ from django.utils.html import mark_safe
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', "signature", 'time', "day_list", "media_count", "message_count", "last_restarted"]
+    list_display = ['name', "signature", 'time', "day_list", "media_count", "message_count", "last_restarted", "active",]
     
     def media_count(self, obj):
         return obj.media.count()
@@ -67,7 +67,7 @@ class MessageAdmin(admin.ModelAdmin):
 
 @admin.register(StatickCategory)
 class StCategoryAdmin(admin.ModelAdmin):
-    list_display = ["name", "signature", "media_count", "time", "day_list", "last_restarted", ]
+    list_display = ["name", "signature", "media_count", "time", "day_list", "last_restarted", "active",]
     def media_count(self, obj):
         return obj.st_media.count()
     media_count.short_description = "Ст. Медия"

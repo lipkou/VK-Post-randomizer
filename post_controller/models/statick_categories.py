@@ -9,6 +9,7 @@ class StatickCategory(models.Model):
     week_days = models.ManyToManyField(WeekDay, verbose_name="Дни недели")
     time = models.TimeField()
     last_restarted = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField(default=True)
     
     class Meta:
         verbose_name="Статичиская категория"
@@ -16,4 +17,10 @@ class StatickCategory(models.Model):
 
     def __str__(self):
         st_media = self.st_media.count()
-        return f'{self.name} (Медиа: {st_media});'
+        text = f'{self.name} (Медиа: {st_media}) '
+        if self.active:
+            text += "✅"
+        else:
+            text += "⛔"
+        
+        return text

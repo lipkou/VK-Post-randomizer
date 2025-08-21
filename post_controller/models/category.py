@@ -9,6 +9,7 @@ class Category(models.Model):
     week_days = models.ManyToManyField(WeekDay, verbose_name="Дни недели")
     time = models.TimeField(null=False)
     last_restarted = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField(default=True)
     
     class Meta:
         verbose_name="Категория"
@@ -17,5 +18,11 @@ class Category(models.Model):
     def __str__(self):
         media_count = self.media.count()
         message_count = self.messages.count()
-        return f'{self.name} (Img: {media_count}; Mes: {message_count})'
+        text = f'{self.name} (Img: {media_count}; Mes: {message_count}) '
+        if self.active:
+            text += "✅"
+        else:
+            text += "⛔"
+            
+        return text
 
