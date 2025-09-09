@@ -80,7 +80,7 @@ class StCategoryAdmin(admin.ModelAdmin):
 @admin.register(StatickMedia)
 class StMediaAdmin(admin.ModelAdmin):
     form = MediaAdminForm
-    list_display = ['id', 'preview', 'categories_list', "used_time", "used",]
+    list_display = ['id', 'preview', 'text', 'categories_list', "used_time", "used",]
     list_display_links = ['id', 'preview', ]
     filter_horizontal = ['categories']  
     
